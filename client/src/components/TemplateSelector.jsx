@@ -1,74 +1,59 @@
-import React from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import React, { useState } from "react";
+import { Check, Layout } from "lucide-react";
 
-const templates = [
-  {
-    id: "classic",
-    name: "Classic",
-    description: "Simple and professional",
-    previewColor: "bg-white",
-  },
-  {
-    id: "modern",
-    name: "Modern",
-    description: "Clean with bold headings",
-    previewColor: "bg-slate-100",
-  },
-  {
-    id: "minimal",
-    name: "Minimal",
-    description: "Light and elegant",
-    previewColor: "bg-gray-50",
-  },
-];
+const TemplateSelector = ( {selectedTemplate, onChange} ) => {
+  const [isOpen, setIsOpen] = useState(false)
 
-const TemplateSelector = () => {
-  const navigate = useNavigate();
-  const { resumeId } = useParams();
-
-  const selectTemplate = (templateId) => {
-    navigate(`/app/builder/${resumeId}?template=${templateId}`);
-  };
-
+  const templates = [
+    {
+      id: "classic",
+      name: "Classic",
+      preview: "A clean, traditional resume format with clear sections and professional typography."
+    },
+    {
+      id: "modern",
+      name: "Modern",
+      preview: "Sleek design with strategic use of color and modern font choices."
+    },
+    {
+      id: "minimal-image",
+      name: "Minimal with Image",
+      preview: "A minimalist layout that incorporates a profile image for a personal touch."
+    },
+    {
+      id: "minimal",
+      name: "Minimal",
+      preview: "Ultra-clean design that puts your content front and center."
+    },
+  ]
   return (
-    <div className="min-h-screen bg-gray-900 text-white px-8 py-10">
-      <h1 className="text-3xl font-semibold mb-2">Choose a Template</h1>
-      <p className="text-gray-400 mb-8">
-        You can change this anytime later
-      </p>
-
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-        {templates.map((template) => (
-          <div
-            key={template.id}
-            onClick={() => selectTemplate(template.id)}
-            className="cursor-pointer rounded-xl bg-gray-800 hover:bg-gray-700 transition p-4"
-          >
-            {/* Preview */}
-            <div
-              className={`h-48 rounded-lg mb-4 ${template.previewColor} flex items-center justify-center text-gray-800`}
-            >
-              <span className="text-sm font-semibold">
-                {template.name} Preview
-              </span>
-            </div>
-
-            <h2 className="text-lg font-medium">{template.name}</h2>
-            <p className="text-sm text-gray-400">
-              {template.description}
-            </p>
-          </div>
-        ))}
-      </div>
-
-      <button
-        onClick={() => navigate(-1)}
-        className="mt-10 text-indigo-400 hover:underline"
-      >
-        ← Back
+    <div className="relative">
+      <button onClick={() => setIsOpen(!isOpen)} className="flex items-center gap-1 text-sm text-blue-600 bg-gradient-to-br from-blue-50 to-blue-100 ring-blue-600 hover:ring transition-all px-3 py-2 rounded-lg">
+        <Layout size={14} /> <span className="max-sm:hidden">Template</span>
       </button>
-    </div>
-  );
-};
 
-export default TemplateSelector;
+      {isOpen && (
+        <div className="absolute top-full mt-2 w-64 bg-white border border-gray-200 rounded-lg shadow-lg z-10">
+          {templates.map(template => (
+            <div key={template.id} onClick={() => {onChange(template.id); setIsOpen(false)}} className={`p-4 cursor-pointer ${selectedTemplate === template.id ? "bg-blue-50" : "hover:bg-gray-50"}`}>
+             {selectedTemplate === template.id && (
+              <div className="absolute top-2 right-2">
+                <div className="size-5 bg-blue-400 rounded-full flex items-center justify-center">
+                  <Check className="w-3 h-3 text-white" />
+                </div>
+              </div>
+             )}
+
+             <div className="space-y-1">
+              <h4 className="font-medium text-gray-800">{template.name}</h4>
+              <div className="mt-2 p-2 bg-blue-50 rounded text-xs text-gray-500 italic">{template.preview}</div>
+             </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+export default TemplateSelector

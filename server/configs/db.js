@@ -12,7 +12,7 @@ const connectDB = async () => {
         }
 
         if(mongodbURI.endsWith('/')){
-            mongodbURI.slice(0, -1)
+            mongodbURI = mongodbURI.slice(0, -1)
         }
 
         await mongoose.connect(`${mongodbURI}/${projectName}`)

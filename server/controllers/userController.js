@@ -34,7 +34,7 @@ export const registerUser = async (req, res) => {
     const token = generateToken(newUser._id)
     newUser.password = undefined;
 
-    return res.status(201).json({messgae: 'User created successfully', token, user: newUser})
+    return res.status(201).json({message: 'User created successfully', token, user: newUser})
 } catch ( error ){
         return res.status(400).json({message: error.message})
     }
@@ -66,7 +66,7 @@ export const loginUser = async (req, res) => {
     const token = generateToken(user._id)
     user.password = undefined;
 
-    return res.status(200).json({messgae: 'Login successfully', token, user})
+    return res.status(200).json({message: 'Login successfully', token, user})
 } catch ( error ){
         return res.status(400).json({message: error.message})
     }
@@ -87,7 +87,7 @@ export const getUserById = async (req, res) => {
 
         //return user
         user.password = undefined;
-        return res.status(400).json({user});
+        return res.status(200).json({user});
 } catch ( error ){
         return res.status(400).json({message: error.message})
     }

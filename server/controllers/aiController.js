@@ -139,7 +139,7 @@ export const uploadResumeDatabase = async (req,res) => {
         })
 
         const enhancedContent = response.choices[0].message.content;
-        const parsedData = JSON.parse(extractedData);
+        const parsedData = JSON.parse(enhancedContent);
         const newResume = await Resume.create({
             userId,
             title,

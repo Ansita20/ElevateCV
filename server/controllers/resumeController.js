@@ -1,4 +1,6 @@
 import Resume from "../models/Resume.js";
+import fs from "fs";
+import imagekit from "../configs/imageKit.js";
 
 // contrller for creating a new resume
 // POST: /api/resumes/create
@@ -23,9 +25,13 @@ export const deleteResume = async (req,res) => {
         const userId = req.userId;
         const {resumeId} = req.params;
 
-        await Resume.findOneAnsDelete({userId, _id: resumeId});
+        const deletedResume = await Resume.findOneAndDelete({userId, _id: resumeId});
 
-        return res.status(201).json({message: 'Resume deleted successfully'})
+        if(!deletedResume){
+            return res.status(404).json({message: 'Resume not found'});
+        }
+
+        return res.status(200).json({message: 'Resume deleted successfully'})
     }catch (error){
         return res.status(400).json({message: error.message});
     }
@@ -38,15 +44,15 @@ export const getResumeById = async (req,res) => {
         const userId = req.userId;
         const {resumeId} = req.params;
 
-        const resume = await Resume.findOne({userId, _id: resumeId});
+        const resume = await Resume.findOne({userId, _id: resumeId}).lean();
 
         if(!resume){
             return res.status(404).json({message: 'Resume not found'});
         }
 
-        resume.__v = undefined;
-        resume.createdAt = undefined;
-        resume.updatedAt = undefined;
+        delete resume.__v;
+        delete resume.createdAt;
+        delete resume.updatedAt;
 
         return res.status(200).json({resume})
     }catch (error){
@@ -65,7 +71,7 @@ export const getPublicResumeById = async (req,res) => {
             return res.status(404).json({message: 'Resume not found'});
         }
 
-        return res.satsus(200).json({resume})
+        return res.status(200).json({resume})
     } catch (error){
         return res.status(400).json({message: error.message});
     }
@@ -79,14 +85,13 @@ export const updateResume = async (req,res) => {
         const {resumeId, resumeData, removeBackground} = req.body;
         const image = req.file;
 
-        let resumeDataCopy = JSON.parse(resumeData);
+        let resumeDataCopy = typeof resumeData === "string" ? JSON.parse(resumeData) : (resumeData || {});
 
         if(image){
-            const imageBufferData = fs.createReadStream(image.Path);
             const response = await imagekit.files.upload({
-                file: fs.createReadStream('path/to/file'),
-                fileName: 'resume.png',
-                folder: 'user-resumes',
+                file: fs.createReadStream(image.path),
+                fileName: image.originalname || 'resume.png',
+                folder: '/user-resumes',
                 transformation: {
                     pre: 'w-300,h-300,fo-face,z-0.75' + (removeBackground ? ',e-bgremove' : '')
 
@@ -95,7 +100,16 @@ export const updateResume = async (req,res) => {
             resumeDataCopy.personal_info.image = response.url;
         }
 
-        const resume = await Resume.findOne({userId, _id: resumeId}, resumeDataCopy, {new: true});
+        const resume = await Resume.findOneAndUpdate(
+            {userId, _id: resumeId},
+            { $set: resumeDataCopy },
+            {new: true}
+        );
+
+        if(!resume){
+            return res.status(404).json({message: 'Resume not found'});
+        }
+
         return res.status(200).json({message: 'Resume updated successfully', resume})
     }catch(error){
         return res.status(400).json({message: error.message});
