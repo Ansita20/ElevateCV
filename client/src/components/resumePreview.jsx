@@ -5,17 +5,21 @@ import MinimalImageTemplate from "../assets/templates/MinimalImageTemplate";
 import ModernTemplate from "../assets/templates/ModernTemplate";
 
 const ResumePreview = ({data, template, accentColor, classes = ""}) => {
+  const livePersonalInfo = data?.personel_Info || {};
+  const persistedPersonalInfo = data?.personal_info || {};
+
   const normalizedData = {
     ...data,
-    personal_info: data?.personal_info || {
-      full_name: data?.personel_Info?.fullName || "",
-      email: data?.personel_Info?.email || "",
-      phone: data?.personel_Info?.phone || "",
-      location: data?.personel_Info?.location || "",
-      profession: data?.personel_Info?.profession || "",
-      linkedin: data?.personel_Info?.linkedin || "",
-      website: data?.personel_Info?.website || "",
-      image: data?.personel_Info?.image || null,
+    // Always prefer live form values so preview updates instantly while typing.
+    personal_info: {
+      full_name: livePersonalInfo.fullName ?? persistedPersonalInfo.full_name ?? "",
+      email: livePersonalInfo.email ?? persistedPersonalInfo.email ?? "",
+      phone: livePersonalInfo.phone ?? persistedPersonalInfo.phone ?? "",
+      location: livePersonalInfo.location ?? persistedPersonalInfo.location ?? "",
+      profession: livePersonalInfo.profession ?? persistedPersonalInfo.profession ?? "",
+      linkedin: livePersonalInfo.linkedin ?? persistedPersonalInfo.linkedin ?? "",
+      website: livePersonalInfo.website ?? persistedPersonalInfo.website ?? "",
+      image: livePersonalInfo.image ?? persistedPersonalInfo.image ?? null,
     },
   };
 

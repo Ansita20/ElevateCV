@@ -1,11 +1,18 @@
 import React from "react";
 import logo from "../../assets/fulllogo_transparent (1).png";
 import Testimonials from "./Testimonials.jsx";
-import Footer from "./footer.jsx";
+import Footer from "./Footer.jsx";
+import { Link, useNavigate } from "react-router-dom";
+import { useSelector } from "react-redux";
 
 const Hero = () => {
-  const [mobileOpen, setMobileOpen] = React.useState(false);
 
+  const {user} = useSelector(state => state.auth)
+  const hasToken = !!localStorage.getItem('token')
+  const isAuthenticated = !!user || hasToken
+
+  const navigate = useNavigate();
+  const [mobileOpen, setMobileOpen] = React.useState(false);
   return (
     <>
       <style>{`
@@ -27,9 +34,12 @@ const Hero = () => {
                 {item}
               </a>
             ))}
-            <button className="bg-purple-600 hover:bg-purple-700 text-white px-8 py-2 rounded-full text-sm transition">
-              Submit
+            <button hidden={isAuthenticated} onClick={() => navigate('/login')} className="bg-purple-600 hover:bg-purple-700 text-white px-8 py-2 rounded-full text-sm transition">
+              Login
             </button>
+            <Link hidden={!isAuthenticated} to='/app' className="bg-purple-600 hover:bg-purple-700 text-white px-8 py-2 rounded-full text-sm transition">
+              Dashboard
+            </Link>
           </div>
 
           {/* Mobile menu button */}
@@ -73,9 +83,12 @@ const Hero = () => {
                 {item}
               </a>
             ))}
-            <button className="bg-purple-600 hover:bg-purple-700 px-10 py-2 rounded-full text-sm">
-              Submit
+            <button hidden={isAuthenticated} onClick={() => navigate('/login')} className="bg-purple-600 hover:bg-purple-700 px-10 py-2 rounded-full text-sm">
+              Login
             </button>
+            <Link hidden={!isAuthenticated} to='/app' className="bg-purple-600 hover:bg-purple-700 px-10 py-2 rounded-full text-sm">
+              Dashboard
+            </Link>
           </div>
         </nav>
 
@@ -103,7 +116,7 @@ const Hero = () => {
           <p className="text-gray-200 mt-4 text-sm">20+ CV templates available</p>
 
           {/* CTA Button */}
-          <button className="mt-8 bg-purple-950 hover:bg-purple-800 px-6 py-2 rounded-full text-white font-semibold transition">
+          <button onClick={() => navigate(isAuthenticated ? '/app' : '/login')} className="mt-8 bg-purple-950 hover:bg-purple-800 px-6 py-2 rounded-full text-white font-semibold transition">
             Build Your Resume
           </button>
 

@@ -1,8 +1,14 @@
 import { Lock, Mail, User2Icon } from 'lucide-react';
 import React from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import { toast } from 'react-hot-toast';
+import api from '../configs/api';
+import { login, setLoading } from '../app/features/authSlice';
 
 const Login = () => {
 
+  const dispatch = useDispatch();
+  const { user } = useSelector(state => state.auth);
   const query = new URLSearchParams(window.location.search);
   const urlState = query.get("state");
   
@@ -14,16 +20,48 @@ const Login = () => {
         email: '',
         password: ''
     })
+    const [authDebug, setAuthDebug] = React.useState('')
+    const [isSubmitting, setIsSubmitting] = React.useState(false)
 
     const handleChange = (e) => {
         const { name, value } = e.target
         setFormData(prev => ({ ...prev, [name]: value }))
     }
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault()
+        setIsSubmitting(true)
+        setAuthDebug(`Submitting ${state} request...`)
+        try{
+        const { data } = await api.post(`/api/users/${state}`, formData);
+        if (data?.token && data?.user) {
+          localStorage.setItem('token', data.token)
+          dispatch(login({ token: data.token, user: data.user }))
+          dispatch(setLoading(false))
+          setAuthDebug('Success: token and user received. Redirecting to /app...')
+          toast.success(data.message || 'Authentication successful')
+          window.location.replace('/app')
+          return
+        }
 
+        setAuthDebug('Auth response did not include token/user. Check backend response shape.')
+        toast.error('Authentication succeeded but token was not returned')
+        }catch(error) {
+            const status = error?.response?.status
+            const message = error?.response?.data?.message || error.message
+            setAuthDebug(`Auth failed${status ? ` (${status})` : ''}: ${message}`)
+            toast.error(error?.response?.data?.message || error.message)
+        } finally {
+            setIsSubmitting(false)
+        }
     }
+
+    React.useEffect(() => {
+      if (user || localStorage.getItem('token')) {
+        setAuthDebug('Existing session found. Redirecting to /app...')
+        window.location.replace('/app')
+      }
+    }, [user])
 
    return (
   <div className="relative min-h-screen flex items-center justify-center overflow-hidden">
@@ -86,17 +124,22 @@ const Login = () => {
       </div>
 
       <div className="mt-4 text-left">
-        <button className="text-sm text-indigo-400 hover:underline">
+        <button type="button" className="text-sm text-indigo-400 hover:underline">
           Forget password?
         </button>
       </div>
 
       <button
         type="submit"
+        disabled={isSubmitting}
         className="mt-4 w-full h-11 rounded-full text-white bg-indigo-600 hover:bg-indigo-500 transition"
       >
-        {state === "login" ? "Login" : "Sign up"}
+        {isSubmitting ? 'Please wait...' : (state === "login" ? "Login" : "Sign up")}
       </button>
+
+      {authDebug && (
+        <p className="mt-3 text-xs text-left text-amber-300 break-words">{authDebug}</p>
+      )}
 
       <p
         onClick={() =>

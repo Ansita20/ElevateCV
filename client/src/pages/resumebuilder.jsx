@@ -5,7 +5,8 @@ import PersonelInfoForm from "../components/PersonelInfo";
 import TemplateSelector from "../components/TemplateSelector";
 import ColorChange from "../components/colorChange";
 import ResumePreview from "../components/resumePreview";
-import { dummyResumeData } from "../assets/assets";
+import { toast } from "react-hot-toast";
+import api from "../configs/api";
 import {
   ArrowLeft,
   User,
@@ -28,9 +29,12 @@ import SkillsForm from "../components/SkillsForm";
 const Resumebuilder = () => {
   const [activeSectionIndex, setActiveSectionIndex] = useState(0);
   const [removeBackground, setRemoveBackground] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const navigate = useNavigate();
   const { resumeId } = useParams();
   const storageKey = `resumeBuilder:resume:${resumeId}`;
+  const token = localStorage.getItem("token");
 
   const [resumeData, setResumeData] = useState({
     _id: '',
@@ -46,25 +50,72 @@ const Resumebuilder = () => {
     public: false,
   });
 
-  const loadExistingResume = async (resumeId) => {
-    const resume = dummyResumeData.find(resume => resume._id === resumeId);
-    if(resume){
-      setResumeData({
-        ...resume,
-        personel_Info: {
-          fullName: resume.personal_info?.full_name || "",
-          email: resume.personal_info?.email || "",
-          phone: resume.personal_info?.phone || "",
-          location: resume.personal_info?.location || "",
-          profession: resume.personal_info?.profession || "",
-          linkedin: resume.personal_info?.linkedin || "",
-          website: resume.personal_info?.website || "",
-          image: resume.personal_info?.image || null,
-        },
+  const toBuilderShape = (resume) => ({
+    ...resume,
+    personel_Info: {
+      fullName: resume.personal_info?.full_name || "",
+      email: resume.personal_info?.email || "",
+      phone: resume.personal_info?.phone || "",
+      location: resume.personal_info?.location || "",
+      profession: resume.personal_info?.profession || "",
+      linkedin: resume.personal_info?.linkedin || "",
+      website: resume.personal_info?.website || "",
+      image: resume.personal_info?.image || null,
+    },
+  });
+
+  const toApiShape = (data) => ({
+    title: data.title || "Untitled Resume",
+    professional_summary: data.professional_summary || "",
+    experience: data.experience || [],
+    education: data.education || [],
+    project: data.project || [],
+    skills: data.skills || [],
+    template: data.template || "classic",
+    accent_color: data.accent_color || "#3B82F6",
+    public: !!data.public,
+    personal_info: {
+      full_name: data.personel_Info?.fullName || "",
+      email: data.personel_Info?.email || "",
+      phone: data.personel_Info?.phone || "",
+      location: data.personel_Info?.location || "",
+      profession: data.personel_Info?.profession || "",
+      linkedin: data.personel_Info?.linkedin || "",
+      website: data.personel_Info?.website || "",
+      image: typeof data.personel_Info?.image === "string" ? data.personel_Info.image : "",
+    },
+  });
+
+  const loadExistingResume = async (id) => {
+    if (!token || !id) return;
+    try {
+      setIsLoading(true);
+      const { data } = await api.get(`/api/resumes/get/${id}`, {
+        headers: { Authorization: `Bearer ${token}` },
       });
-      document.title = resume.title
-    } 
-  }
+      const resume = data?.resume;
+      if (!resume) {
+        toast.error("Resume not found");
+        return;
+      }
+      const builderData = toBuilderShape(resume);
+      setResumeData(builderData);
+      localStorage.setItem(storageKey, JSON.stringify(builderData));
+      document.title = resume.title || "Resume Builder";
+    } catch (error) {
+      const saved = localStorage.getItem(storageKey);
+      if (saved) {
+        try {
+          setResumeData(JSON.parse(saved));
+        } catch {
+          localStorage.removeItem(storageKey);
+        }
+      }
+      toast.error(error?.response?.data?.message || "Unable to load resume");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const sections = [
     { id: "personel_Info", title: "Personel Info", icon: User },
@@ -79,19 +130,92 @@ const Resumebuilder = () => {
     if (resumeId) {
       loadExistingResume(resumeId);
     }
-  },[resumeId])
+  }, [resumeId]);
 
   useEffect(() => {
     if (!resumeId) return;
     localStorage.setItem(storageKey, JSON.stringify(resumeData));
   }, [resumeId, resumeData, storageKey]);
 
+  useEffect(() => {
+    if (!resumeId || !token || isLoading) return;
+
+    const timer = setTimeout(async () => {
+      try {
+        setIsSaving(true);
+        const payload = toApiShape(resumeData);
+
+        const imageFile = resumeData.personel_Info?.image;
+        if (imageFile && typeof imageFile !== "string") {
+          const formData = new FormData();
+          formData.append("resumeId", resumeId);
+          formData.append("resumeData", JSON.stringify(payload));
+          formData.append("removeBackground", String(removeBackground));
+          formData.append("image", imageFile);
+
+          const { data: response } = await api.put("/api/resumes/update", formData, {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "multipart/form-data",
+            },
+          });
+
+          const savedImage = response?.resume?.personal_info?.image;
+          if (savedImage) {
+            setResumeData((prev) => {
+              if (prev.personel_Info?.image === savedImage) return prev;
+              return {
+                ...prev,
+                personel_Info: {
+                  ...prev.personel_Info,
+                  image: savedImage,
+                },
+              };
+            });
+          }
+        } else {
+          const { data: response } = await api.put(
+            "/api/resumes/update",
+            {
+              resumeId,
+              resumeData: payload,
+              removeBackground,
+            },
+            {
+              headers: { Authorization: `Bearer ${token}` },
+            }
+          );
+
+          const savedImage = response?.resume?.personal_info?.image;
+          if (savedImage) {
+            setResumeData((prev) => {
+              if (prev.personel_Info?.image === savedImage) return prev;
+              return {
+                ...prev,
+                personel_Info: {
+                  ...prev.personel_Info,
+                  image: savedImage,
+                },
+              };
+            });
+          }
+        }
+      } catch (error) {
+        console.log(error?.response?.data?.message || error.message);
+      } finally {
+        setIsSaving(false);
+      }
+    }, 700);
+
+    return () => clearTimeout(timer);
+  }, [resumeData, resumeId, token, removeBackground, isLoading]);
+
   const handleOpenPreview = () => {
     navigate(`/preview/${resumeId}`, { state: { resumeData } });
   };
 
   const handleDone = () => {
-    navigate("/");
+    navigate("/app");
   };
 
   const handleShare = async () => {
@@ -189,6 +313,8 @@ const Resumebuilder = () => {
           </div>
           <div className="lg:col-span-7 max-lg:mt-6">
             <div className="mb-3 flex items-center justify-end gap-2">
+              {isSaving && <span className="text-xs text-slate-500">Saving...</span>}
+              {isLoading && <span className="text-xs text-slate-500">Loading...</span>}
               <label className="flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-300 text-sm text-gray-700 bg-white">
                 <Globe className="size-4" />
                 <span>Public View</span>

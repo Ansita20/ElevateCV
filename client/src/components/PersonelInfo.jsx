@@ -53,7 +53,7 @@ const PersonelInfoForm = ({ data, onChange, removeBackground, setRemoveBackgroun
             />
           </label>
 
-          {typeof data.image === "object" && (
+          {data.image && (
             <div className="flex flex-col gap-1 pt-3 text-sm">
               <p>Remove Background</p>
 

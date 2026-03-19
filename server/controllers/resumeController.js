@@ -2,6 +2,39 @@ import Resume from "../models/Resume.js";
 import fs from "fs";
 import imagekit from "../configs/imageKit.js";
 
+const applyBackgroundTransformToImageUrl = (imageUrl, removeBackground) => {
+    if (!imageUrl || typeof imageUrl !== "string") return imageUrl;
+
+    try {
+        const parsed = new URL(imageUrl);
+        const current = parsed.searchParams.get("tr") || "";
+        const parts = current
+            .split(",")
+            .map((part) => part.trim())
+            .filter(Boolean)
+            .filter((part) => part !== "e-bgremove");
+
+        const defaults = ["w-300", "h-300", "fo-face", "z-0.75"];
+        for (const token of defaults) {
+            if (!parts.includes(token)) parts.push(token);
+        }
+
+        if (String(removeBackground) === "true") {
+            parts.push("e-bgremove");
+        }
+
+        if (parts.length) {
+            parsed.searchParams.set("tr", parts.join(","));
+        } else {
+            parsed.searchParams.delete("tr");
+        }
+
+        return parsed.toString();
+    } catch {
+        return imageUrl;
+    }
+};
+
 // contrller for creating a new resume
 // POST: /api/resumes/create
 
@@ -98,6 +131,12 @@ export const updateResume = async (req,res) => {
                 }
             });
             resumeDataCopy.personal_info.image = response.url;
+        } else if (resumeDataCopy?.personal_info?.image) {
+            // Toggle/remove background effect for already-uploaded image URLs.
+            resumeDataCopy.personal_info.image = applyBackgroundTransformToImageUrl(
+                resumeDataCopy.personal_info.image,
+                removeBackground
+            );
         }
 
         const resume = await Resume.findOneAndUpdate(
