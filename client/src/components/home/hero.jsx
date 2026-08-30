@@ -101,22 +101,10 @@ const Hero = () => {
             Create ATS-friendly, job-ready resumes in minutes using AI.
           </p>
 
-          {/* Search Input */}
-          <div className="mt-6 flex items-center gap-2 bg-white rounded-md border border-gray-500/30 overflow-hidden max-w-md mx-auto">
-            <input
-              type="text"
-              placeholder="Search for a product"
-              className="flex-1 px-4 py-2 outline-none text-gray-700"
-            />
-            <button className="bg-purple-600 hover:bg-purple-700 px-6 py-2 text-white font-medium transition">
-              Search
-            </button>
-          </div>
-
           <p className="text-gray-200 mt-4 text-sm">20+ CV templates available</p>
 
           {/* CTA Button */}
-          <button onClick={() => navigate(isAuthenticated ? '/app' : '/login')} className="mt-8 bg-purple-950 hover:bg-purple-800 px-6 py-2 rounded-full text-white font-semibold transition">
+          <button onClick={() => navigate(isAuthenticated ? '/app' : '/login')} className="mt-6 bg-purple-950 hover:bg-purple-800 px-6 py-2 rounded-full text-white font-semibold transition">
             Build Your Resume
           </button>
 

@@ -1,28 +1,32 @@
-const App = () => {
+const Testimonials = () => {
     const cardsData = [
         {
             image: 'https://images.unsplash.com/photo-1633332755192-727a05c4013d?q=80&w=200',
             name: 'Briar Martin',
             handle: '@neilstellar',
-            date: 'April 20, 2025'
+            date: 'April 20, 2025',
+            quote: 'The AI enhancer turned my rough bullet points into an ATS-ready summary in seconds. Landed 3 interviews the same week.'
         },
         {
             image: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=200',
             name: 'Avery Johnson',
             handle: '@averywrites',
-            date: 'May 10, 2025'
+            date: 'May 10, 2025',
+            quote: 'I uploaded my old PDF resume and it auto-filled every section correctly. Saved me hours of retyping.'
         },
         {
             image: 'https://images.unsplash.com/photo-1527980965255-d3b416303d12?w=200&auto=format&fit=crop&q=60',
             name: 'Jordan Lee',
             handle: '@jordantalks',
-            date: 'June 5, 2025'
+            date: 'June 5, 2025',
+            quote: 'Clean templates, easy to customize, and completely free. Exactly what I needed for my job search.'
         },
         {
             image: 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=200&auto=format&fit=crop&q=60',
-            name: 'Avery Johnson',
-            handle: '@averywrites',
-            date: 'May 10, 2025'
+            name: 'Priya Nair',
+            handle: '@priyabuilds',
+            date: 'May 10, 2025',
+            quote: 'The job description enhancer made my experience section sound so much more professional.'
         },
     ];
 
@@ -40,8 +44,7 @@ const App = () => {
                     <span className="text-xs text-slate-500">{card.handle}</span>
                 </div>
             </div>
-            <p className="text-sm py-4 text-gray-800">Radiant made undercutting all of our competitors an absolute
-                breeze.</p>
+            <p className="text-sm py-4 text-gray-800">{card.quote}</p>
             <div className="flex items-center justify-between text-slate-500 text-xs">
                 <div className="flex items-center gap-1">
                     <span>Posted on</span>
@@ -96,4 +99,4 @@ const App = () => {
     )
 }
 
-export default App;
+export default Testimonials;

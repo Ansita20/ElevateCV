@@ -25,6 +25,16 @@ const TemplateSelector = ( {selectedTemplate, onChange} ) => {
       name: "Minimal",
       preview: "Ultra-clean design that puts your content front and center."
     },
+    {
+      id: "latex-classic",
+      name: "LaTeX Classic",
+      preview: "The classic academic CV look - serif type, tracked section headers, clickable contact links. Highly ATS-friendly."
+    },
+    {
+      id: "latex-modern",
+      name: "LaTeX Modern",
+      preview: "Same ATS-safe single-column structure with a color accent and split header layout for a more modern feel."
+    },
   ]
   return (
     <div className="relative">

@@ -1,8 +1,17 @@
-import { Mail, Phone, MapPin, Linkedin, Globe } from "lucide-react";
+import { Mail, Phone, MapPin, Linkedin, Globe, Link2 } from "lucide-react";
+import { getDensity } from "./density";
 
-const ModernTemplate = ({ data, accentColor }) => {
+const normalizeUrl = (value) => {
+	const trimmed = String(value || "").trim();
+	if (!trimmed) return "";
+	return /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+};
+
+const ModernTemplate = ({ data, accentColor, spacing }) => {
+	const d = getDensity(spacing);
 	const formatDate = (dateStr) => {
 		if (!dateStr) return "";
+		if (!/^\d{4}-\d{2}$/.test(dateStr)) return dateStr;
 		const [year, month] = dateStr.split("-");
 		return new Date(year, month - 1).toLocaleDateString("en-US", {
 			year: "numeric",
@@ -11,25 +20,25 @@ const ModernTemplate = ({ data, accentColor }) => {
 	};
 
 	return (
-		<div className="max-w-4xl mx-auto bg-white text-gray-800">
+		<div className={`max-w-4xl mx-auto bg-white text-gray-800 ${d.lineHeight}`}>
 			{/* Header */}
-			<header className="p-8 text-white" style={{ backgroundColor: accentColor }}>
+			<header className={`${d.padding} text-white`} style={{ backgroundColor: accentColor }}>
 				<h1 className="text-4xl font-light mb-3">
 					{data.personal_info?.full_name || "Your Name"}
 				</h1>
 
 				<div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm ">
 					{data.personal_info?.email && (
-						<div className="flex items-center gap-2">
+						<a href={`mailto:${data.personal_info.email}`} className="flex items-center gap-2">
 							<Mail className="size-4" />
 							<span>{data.personal_info.email}</span>
-						</div>
+						</a>
 					)}
 					{data.personal_info?.phone && (
-						<div className="flex items-center gap-2">
+						<a href={`tel:${data.personal_info.phone.replace(/[^+\d]/g, "")}`} className="flex items-center gap-2">
 							<Phone className="size-4" />
 							<span>{data.personal_info.phone}</span>
-						</div>
+						</a>
 					)}
 					{data.personal_info?.location && (
 						<div className="flex items-center gap-2">
@@ -38,39 +47,45 @@ const ModernTemplate = ({ data, accentColor }) => {
 						</div>
 					)}
 					{data.personal_info?.linkedin && (
-						<a target="_blank" href={data.personal_info?.linkedin} className="flex items-center gap-2">
+						<a target="_blank" rel="noreferrer" href={normalizeUrl(data.personal_info.linkedin)} className="flex items-center gap-2">
 							<Linkedin className="size-4" />
 							<span className="break-all text-xs">{data.personal_info.linkedin.split("https://www.")[1] ? data.personal_info.linkedin.split("https://www.")[1] : data.personal_info.linkedin}</span>
 						</a>
 					)}
 					{data.personal_info?.website && (
-						<a target="_blank" href={data.personal_info?.website} className="flex items-center gap-2">
+						<a target="_blank" rel="noreferrer" href={normalizeUrl(data.personal_info.website)} className="flex items-center gap-2">
 							<Globe className="size-4" />
 							<span className="break-all text-xs">{data.personal_info.website.split("https://")[1] ? data.personal_info.website.split("https://")[1] : data.personal_info.website}</span>
 						</a>
 					)}
+					{(data.profiles || []).filter((p) => p?.url).map((p, i) => (
+						<a key={i} target="_blank" rel="noreferrer" href={normalizeUrl(p.url)} className="flex items-center gap-2">
+							<Link2 className="size-4" />
+							<span className="break-all text-xs">{p.label || p.url}</span>
+						</a>
+					))}
 				</div>
 			</header>
 
-			<div className="p-8">
+			<div className={d.padding}>
 				{/* Professional Summary */}
 				{data.professional_summary && (
-					<section className="mb-8">
+					<section className={d.gap}>
 						<h2 className="text-2xl font-light mb-4 pb-2 border-b border-gray-200">
 							Professional Summary
 						</h2>
-						<p className="text-gray-700 ">{data.professional_summary}</p>
+						<p className={`text-gray-700 ${d.lineHeight}`}>{data.professional_summary}</p>
 					</section>
 				)}
 
 				{/* Experience */}
 				{data.experience && data.experience.length > 0 && (
-					<section className="mb-8">
+					<section className={d.gap}>
 						<h2 className="text-2xl font-light mb-6 pb-2 border-b border-gray-200">
 							Experience
 						</h2>
 
-						<div className="space-y-6">
+						<div className={d.entryGap}>
 							{data.experience.map((exp, index) => (
 								<div key={index} className="relative pl-6 border-l border-gray-200">
 
@@ -83,8 +98,13 @@ const ModernTemplate = ({ data, accentColor }) => {
 											{formatDate(exp.start_date)} - {exp.is_current ? "Present" : formatDate(exp.end_date)}
 										</div>
 									</div>
+									{exp.link && (
+										<a href={normalizeUrl(exp.link)} target="_blank" rel="noreferrer" className="text-xs underline" style={{ color: accentColor }}>
+											{exp.link_label || "View Certificate"}
+										</a>
+									)}
 									{exp.description && (
-										<div className="text-gray-700 leading-relaxed mt-3 whitespace-pre-line">
+										<div className={`text-gray-700 ${d.lineHeight} mt-3 whitespace-pre-line`}>
 											{exp.description}
 										</div>
 									)}
@@ -96,23 +116,28 @@ const ModernTemplate = ({ data, accentColor }) => {
 
 				{/* Projects */}
 				{data.project && data.project.length > 0 && (
-					<section className="mb-8">
+					<section className={d.gap}>
 						<h2 className="text-2xl font-light mb-4 pb-2 border-b border-gray-200">
 							Projects
 						</h2>
 
-						<div className="space-y-6">
+						<div className={d.entryGap}>
 							{data.project.map((p, index) => (
 								<div key={index} className="relative pl-6 border-l border-gray-200" style={{borderLeftColor: accentColor}}>
 
 
 									<div className="flex justify-between items-start">
-										<div>
+										<div className="flex items-center gap-2 flex-wrap">
 											<h3 className="text-lg font-medium text-gray-900">{p.name}</h3>
+											{p.link && (
+												<a href={normalizeUrl(p.link)} target="_blank" rel="noreferrer" className="text-xs underline" style={{ color: accentColor }}>
+													{p.link_label || "Link"}
+												</a>
+											)}
 										</div>
 									</div>
 									{p.description && (
-										<div className="text-gray-700 leading-relaxed text-sm mt-3">
+										<div className={`text-gray-700 ${d.lineHeight} text-sm mt-3`}>
 											{p.description}
 										</div>
 									)}
@@ -130,7 +155,7 @@ const ModernTemplate = ({ data, accentColor }) => {
 								Education
 							</h2>
 
-							<div className="space-y-4">
+							<div className={d.entryGap}>
 								{data.education.map((edu, index) => (
 									<div key={index}>
 										<h3 className="font-semibold text-gray-900">

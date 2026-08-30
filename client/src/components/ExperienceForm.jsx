@@ -4,7 +4,7 @@ const ExperienceForm = ({ data, onChange }) => {
   const handleAdd = () => {
     onChange([
       ...data,
-      { position: "", company: "", start_date: "", end_date: "", is_current: false, description: "" },
+      { position: "", company: "", start_date: "", end_date: "", is_current: false, description: "", link: "", link_label: "" },
     ]);
   };
 
@@ -108,6 +108,22 @@ const ExperienceForm = ({ data, onChange }) => {
                 rows={4}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors text-sm resize-none"
               />
+              <div className="flex gap-2 mt-2">
+                <input
+                  type="text"
+                  value={experience.link_label || ""}
+                  onChange={(e) => handleChange(index, "link_label", e.target.value)}
+                  placeholder="Link label (e.g., Internship Completion Letter)"
+                  className="w-1/2 px-3 py-2 border border-gray-300 rounded-lg focus:ring focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors text-sm"
+                />
+                <input
+                  type="url"
+                  value={experience.link || ""}
+                  onChange={(e) => handleChange(index, "link", e.target.value)}
+                  placeholder="https://... (optional)"
+                  className="w-1/2 px-3 py-2 border border-gray-300 rounded-lg focus:ring focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors text-sm"
+                />
+              </div>
             </div>
           ))}
         </div>

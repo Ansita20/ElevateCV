@@ -12,8 +12,8 @@ const getModelCandidates = () => {
     const configured = process.env.GEMINI_MODEL || process.env.OPENAI_MODEL || "";
     const candidates = [
         configured,
-        "gemini-2.0-flash",
-        "gemini-1.5-flash",
+        "gemini-3.6-flash",
+        "gemini-flash-latest",
     ].filter(Boolean);
     return [...new Set(candidates)];
 };
@@ -42,7 +42,64 @@ const stripCodeFences = (value = "") => {
     if (!text.startsWith("```") && !text.endsWith("```")) {
         return text;
     }
-    return text.replace(/^```[a-zA-Z]*\n?/, "").replace(/```$/, "").trim();
+    return text
+        .replace(/^```(?:json|javascript|typescript|python)?\s*/i, "")
+        .replace(/```\s*$/, "")
+        .trim();
+};
+
+export const parseStructuredJson = (value = "") => {
+    const text = stripCodeFences(value);
+    if (!text) return null;
+
+    try {
+        return JSON.parse(text);
+    } catch {
+        // Try to recover from text that wraps JSON in prose.
+    }
+
+    const firstBrace = text.indexOf("{");
+    const lastBrace = text.lastIndexOf("}");
+    if (firstBrace >= 0 && lastBrace > firstBrace) {
+        const candidate = text.slice(firstBrace, lastBrace + 1);
+        try {
+            return JSON.parse(candidate);
+        } catch {
+            return null;
+        }
+    }
+
+    return null;
+};
+
+// Newer Gemini models often ignore "return only plain text" and reply with
+// multiple headed options / markdown. Keep just the first option and strip formatting.
+export const sanitizePlainText = (value = "") => {
+    let text = String(value || "").trim();
+    if (!text) return "";
+
+    const optionSplit = text.split(/\n(?=\s*(?:\*\*|#{1,6}\s*)?(?:option|version)\s*\d+)/i);
+    if (optionSplit.length > 1) {
+        text = optionSplit[0];
+    }
+
+    const lines = [];
+    for (const rawLine of text.split("\n")) {
+        const line = rawLine.trim();
+        if (!line) continue;
+        if (/^#{1,6}\s*/.test(line)) continue;
+        if (/^(\*\*)?(option|version)\s*\d+/i.test(line)) continue;
+        if (/^ats keywords/i.test(line)) break;
+        lines.push(line);
+    }
+
+    return lines
+        .join(" ")
+        .replace(/\*\*(.*?)\*\*/g, "$1")
+        .replace(/\*(.*?)\*/g, "$1")
+        .replace(/^>\s*/gm, "")
+        .replace(/\s+/g, " ")
+        .trim();
 };
 
 export const generateTextWithGemini = async ({ systemPrompt = "", userPrompt = "", responseMimeType } = {}) => {

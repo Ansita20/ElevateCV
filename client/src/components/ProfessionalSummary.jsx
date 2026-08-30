@@ -9,8 +9,17 @@ const ProfessionalSummary = ({data, onChange, setResumeData}) => {
   const fallbackEnhanceSummary = (text) => {
     const clean = String(text || "").replace(/\s+/g, " ").trim();
     if (!clean) return "";
+
     const base = clean.endsWith(".") ? clean.slice(0, -1) : clean;
-    return `${base}. Results-driven professional with strong ownership, collaboration, and problem-solving skills, focused on delivering measurable impact and business value.`;
+    const keywords = [
+      "results-driven professional",
+      "strong cross-functional collaboration",
+      "excellent problem-solving ability",
+      "focused on measurable impact",
+      "business value and growth",
+    ];
+
+    return `${base}. ${keywords[Math.floor(Math.random() * keywords.length)]}, with a track record of delivering efficient, high-quality work and adapting quickly to new challenges.`;
   };
 
   const handleEnhanceWithAI = async () => {

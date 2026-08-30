@@ -4,6 +4,7 @@ import ProfessionalSummary from "../components/ProfessionalSummary";
 import PersonelInfoForm from "../components/PersonelInfo";
 import TemplateSelector from "../components/TemplateSelector";
 import ColorChange from "../components/colorChange";
+import SpacingSelector from "../components/SpacingSelector";
 import ResumePreview from "../components/resumePreview";
 import { toast } from "react-hot-toast";
 import api from "../configs/api";
@@ -19,12 +20,14 @@ import {
   ChevronRight,
   Eye,
   Globe,
-  Share2
+  Share2,
+  Link2
 } from "lucide-react";
 import ExperienceForm from "../components/ExperienceForm";
 import EducationForm from "../components/EducationForm";
 import ProjectForm from "../components/ProjectForm";
 import SkillsForm from "../components/SkillsForm";
+import ProfilesForm from "../components/ProfilesForm";
 
 const Resumebuilder = () => {
   const [activeSectionIndex, setActiveSectionIndex] = useState(0);
@@ -45,8 +48,10 @@ const Resumebuilder = () => {
     education: [],
     project: [],
     skills: [],
+    profiles: [],
     template: "classic",
     accent_color: "#3B82F6",
+    spacing: "normal",
     public: false,
   });
 
@@ -71,8 +76,10 @@ const Resumebuilder = () => {
     education: data.education || [],
     project: data.project || [],
     skills: data.skills || [],
+    profiles: data.profiles || [],
     template: data.template || "classic",
     accent_color: data.accent_color || "#3B82F6",
+    spacing: data.spacing || "normal",
     public: !!data.public,
     personal_info: {
       full_name: data.personel_Info?.fullName || "",
@@ -124,6 +131,7 @@ const Resumebuilder = () => {
     { id: "education", title: "Education", icon: GraduationCap },
     { id: "project", title: "Project", icon: FolderIcon },
     { id: "skills", title: "Skills", icon: Sparkles },
+    { id: "profiles", title: "Links & Profiles", icon: Link2 },
   ];
 
   useEffect(() => {
@@ -260,6 +268,12 @@ const Resumebuilder = () => {
                       onChange={(accent_color) => setResumeData((prev) => ({ ...prev, accent_color }))}
                     />
                   </div>
+                  <div>
+                    <SpacingSelector
+                      selectedSpacing={resumeData.spacing}
+                      onChange={(spacing) => setResumeData((prev) => ({ ...prev, spacing }))}
+                    />
+                  </div>
                   <div className="flex items-center">
                     {activeSectionIndex !== 0 && (
                       <button onClick={() => setActiveSectionIndex((prevIndex) => Math.max(prevIndex - 1, 0))} className= "flex items-center gap-1 p-3 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50 transition-all" disabled={activeSectionIndex === 0}>
@@ -308,6 +322,12 @@ const Resumebuilder = () => {
                         onChange={(data) => setResumeData((prev) => ({ ...prev, skills: data }))}
                       />
                     )}
+                    {sections[activeSectionIndex]?.id === "profiles" && (
+                      <ProfilesForm
+                        data={resumeData.profiles || []}
+                        onChange={(data) => setResumeData((prev) => ({ ...prev, profiles: data }))}
+                      />
+                    )}
                 </div>
             </div>
           </div>
@@ -349,7 +369,7 @@ const Resumebuilder = () => {
                 Done
               </button>
             </div>
-            <ResumePreview data={resumeData} template={resumeData.template} accentColor={resumeData.accent_color}/>
+            <ResumePreview data={resumeData} template={resumeData.template} accentColor={resumeData.accent_color} spacing={resumeData.spacing}/>
           </div>
         </div>
       </div>

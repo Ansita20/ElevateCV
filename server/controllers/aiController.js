@@ -1,5 +1,5 @@
 import Resume from "../models/Resume.js";
-import { generateTextWithGemini } from "../configs/ai.js";
+import { generateTextWithGemini, parseStructuredJson, sanitizePlainText } from "../configs/ai.js";
 
 const splitIntoSections = (text) => {
     const lines = String(text || "")
@@ -21,24 +21,28 @@ const splitIntoSections = (text) => {
         const line = rawLine.trim();
         if (!line) continue;
         const normalized = line.toLowerCase().replace(/[:\-]/g, "").trim();
+        // Resume templates often render headers with visual letter-spacing
+        // ("S U M M A RY"), which PDF extraction reproduces literally. Also try
+        // the fully space-stripped form so those still get recognized.
+        const collapsed = normalized.replace(/\s+/g, "");
 
-        if (/^(professional summary|summary|profile|objective)$/.test(normalized)) {
+        if (/^(professional summary|summary|profile|objective)$/.test(normalized) || /^(professionalsummary|summary|profile|objective)$/.test(collapsed)) {
             active = "summary";
             continue;
         }
-        if (/^(work experience|experience|employment|professional experience)$/.test(normalized)) {
+        if (/^(work experience|experience|employment|professional experience)$/.test(normalized) || /^(workexperience|experience|employment|professionalexperience)$/.test(collapsed)) {
             active = "experience";
             continue;
         }
-        if (/^(education|academic background|academics)$/.test(normalized)) {
+        if (/^(education|academic background|academics)$/.test(normalized) || /^(education|academicbackground|academics)$/.test(collapsed)) {
             active = "education";
             continue;
         }
-        if (/^(skills|technical skills|core skills|technologies)$/.test(normalized)) {
+        if (/^(skills|technical skills|core skills|technologies)$/.test(normalized) || /^(skills|technicalskills|coreskills|technologies)$/.test(collapsed)) {
             active = "skills";
             continue;
         }
-        if (/^(projects|project experience|personal projects)$/.test(normalized)) {
+        if (/^(projects|project experience|personal projects)$/.test(normalized) || /^(projects|projectexperience|personalprojects)$/.test(collapsed)) {
             active = "projects";
             continue;
         }
@@ -204,19 +208,78 @@ const buildFallbackResumeData = (resumeText = "") => {
     };
 };
 
+// A well-formed name/profession/etc. is always short. If the AI (or a bad
+// extraction upstream) dumps a huge slab of raw text into one of these
+// fields, reject it and keep whatever the fallback parser or existing value
+// had, rather than letting it blow up the resume preview UI.
+const PERSONAL_INFO_MAX_LENGTHS = {
+    image: 2000,
+    full_name: 100,
+    profession: 100,
+    email: 100,
+    phone: 40,
+    location: 100,
+    linkedin: 200,
+    website: 200,
+};
+
+const sanitizePersonalInfo = (parsedInfo, fallbackInfo) => {
+    const result = { ...(fallbackInfo || {}) };
+    if (!parsedInfo || typeof parsedInfo !== "object") return result;
+
+    for (const field of Object.keys(PERSONAL_INFO_MAX_LENGTHS)) {
+        const value = parsedInfo[field];
+        if (typeof value !== "string") continue;
+        const trimmed = value.trim();
+        if (!trimmed || trimmed.length > PERSONAL_INFO_MAX_LENGTHS[field]) continue;
+        result[field] = trimmed;
+    }
+    return result;
+};
+
+const MAX_SUMMARY_LENGTH = 1200;
+
+const capString = (value, maxLength) => {
+    if (typeof value !== "string") return "";
+    const trimmed = value.trim();
+    return trimmed.length <= maxLength ? trimmed : "";
+};
+
+// Same over-long-value guard as sanitizePersonalInfo, applied to the link
+// fields on each experience/project entry so a misbehaving AI response can't
+// dump a huge slab of text into what should be a short URL/label.
+const sanitizeEntryLinks = (entries) => {
+    if (!Array.isArray(entries)) return entries;
+    return entries.map((entry) => ({
+        ...entry,
+        link: capString(entry?.link, 500),
+        link_label: capString(entry?.link_label, 100),
+    }));
+};
+
+const sanitizeProfiles = (profiles) => {
+    if (!Array.isArray(profiles)) return [];
+    return profiles
+        .map((p) => ({ label: capString(p?.label, 50), url: capString(p?.url, 500) }))
+        .filter((p) => p.url)
+        .slice(0, 10);
+};
+
 const normalizeImportedData = (parsedData, fallbackData) => {
     const parsed = parsedData && typeof parsedData === "object" ? parsedData : {};
     const fallback = fallbackData || buildFallbackResumeData("");
 
+    const summary = typeof parsed.professional_summary === "string" ? parsed.professional_summary.trim() : "";
+    const experience = Array.isArray(parsed.experience) && parsed.experience.length ? parsed.experience : fallback.experience;
+    const project = Array.isArray(parsed.project) && parsed.project.length ? parsed.project : fallback.project;
+
     return {
-        professional_summary: parsed.professional_summary || fallback.professional_summary || "",
+        professional_summary: (summary && summary.length <= MAX_SUMMARY_LENGTH ? summary : "") || fallback.professional_summary || "",
         skills: Array.isArray(parsed.skills) && parsed.skills.length ? parsed.skills : fallback.skills,
-        personal_info: {
-            ...(fallback.personal_info || {}),
-            ...((parsed.personal_info && typeof parsed.personal_info === "object") ? parsed.personal_info : {}),
-        },
-        experience: Array.isArray(parsed.experience) && parsed.experience.length ? parsed.experience : fallback.experience,
-        project: Array.isArray(parsed.project) && parsed.project.length ? parsed.project : fallback.project,
+        personal_info: sanitizePersonalInfo(parsed.personal_info, fallback.personal_info),
+        profiles: sanitizeProfiles(parsed.profiles),
+        experience: sanitizeEntryLinks(experience),
+        project: sanitizeEntryLinks(project),
         education: Array.isArray(parsed.education) && parsed.education.length ? parsed.education : fallback.education,
     };
 };
@@ -231,13 +294,13 @@ export const enhanceProfessionalSummary = async (req,res) => {
             return res.status(400).json({message: 'Missing required fields'})
         }
 
-        const systemPrompt = "You are an expert in resume writing. Enhance the professional summary into 1-2 compelling ATS-friendly sentences highlighting key skills, experience, and career objectives. Return only plain text.";
+        const systemPrompt = "You are an expert in resume writing. Enhance the professional summary into 1-2 compelling ATS-friendly sentences highlighting key skills, experience, and career objectives. Reply with ONLY the final enhanced summary as plain prose - no headers, no multiple options, no markdown, no bullet points, no preamble or explanation.";
         const { text: enhancedContent } = await generateTextWithGemini({
             systemPrompt,
             userPrompt: userContent,
         });
 
-        return res.status(200).json({enhancedContent})
+        return res.status(200).json({enhancedContent: sanitizePlainText(enhancedContent)})
     } catch (error){
         const message = error?.status
             ? `AI provider error (${error.status}): ${error.message}`
@@ -256,13 +319,13 @@ export const enhanceJobDescription = async (req,res) => {
             return res.status(400).json({message: 'Missing required fields'})
         }
 
-        const systemPrompt = "You are an expert in resume writing. Enhance the job description to be detailed and ATS-friendly, highlighting responsibilities, impact, and skills. Return only plain text.";
+        const systemPrompt = "You are an expert in resume writing. Enhance the job description to be detailed and ATS-friendly, highlighting responsibilities, impact, and skills. Reply with ONLY the final enhanced description as plain prose - no headers, no multiple options, no markdown, no bullet points, no preamble or explanation.";
         const { text: enhancedContent } = await generateTextWithGemini({
             systemPrompt,
             userPrompt: userContent,
         });
 
-        return res.status(200).json({enhancedContent})
+        return res.status(200).json({enhancedContent: sanitizePlainText(enhancedContent)})
     } catch (error){
         const message = error?.status
             ? `AI provider error (${error.status}): ${error.message}`
@@ -282,7 +345,15 @@ export const uploadResumeDatabase = async (req,res) => {
             return res.status(400).json({message: 'Missing required fields'})
         }
 
-        const systemPrompt = `You are an expert in resume writing. Your task is to extract data from resumes and store it in a structured database format. The database should include sections such as Personal Information, Professional Summary, Work Experience, Education, Skills, Certifications, and Projects. Each section should contain relevant details extracted from the resume text. Ensure that the data is organized and easy to retrieve for future use.`;
+        const systemPrompt = `You are an expert in resume writing. Your task is to extract data from resumes and store it in a structured database format. The database should include sections such as Personal Information, Professional Summary, Work Experience, Education, Skills, Certifications, and Projects. Each section should contain relevant details extracted from the resume text. Ensure that the data is organized and easy to retrieve for future use.
+
+Important: the input text may have inconsistent line breaks or spacing from PDF extraction. Use your judgment to identify the actual document structure regardless. Every field must contain ONLY its own specific value - full_name must be just the person's name (2-4 words), profession must be just their job title (a few words), and professional_summary must be only the summary/objective paragraph. Never copy large blocks of raw resume text into full_name, profession, or any field other than the one it actually belongs to. Split multi-line resume content into the correct experience/education/project entries instead of leaving those arrays empty.
+
+Also extract every hyperlink and named profile mentioned in the resume:
+- Any standalone profile/handle mentioned near the contact info that is not LinkedIn or a personal website/portfolio (e.g. GitHub, LeetCode, Codeforces, HackerRank, Kaggle, Twitter/X, Behance, Medium) goes into the top-level "profiles" array as { "label": "<platform name>", "url": "<full https:// URL - construct it from the handle if only a username was given, e.g. LeetCode handle "ansita20" -> "https://leetcode.com/ansita20"> }. Do not put these in linkedin or website.
+- If an experience entry mentions a credential such as "Internship Completion Letter", "Offer Letter", "Certificate of Completion", etc. (with or without an actual URL attached), put the URL in that experience's "link" field and the exact label text (e.g. "Internship Completion Letter") in "link_label". If no URL is present for it, leave link/link_label empty rather than guessing one.
+- If a project mentions "Link", "Live Demo", "GitHub", a repo, or a deployed URL, put the URL in that project's "link" field and a short label (e.g. "GitHub", "Live Demo") in "link_label".
+- Never invent a URL that isn't present or clearly derivable from a stated handle/username in the text.`;
         const userPrompt = `extract data from this resume: ${resumeText}
         
         Provide data in the following JSON format with no additional text before or after:
@@ -298,6 +369,9 @@ export const uploadResumeDatabase = async (req,res) => {
         linkedin: {type: String, default: ''},
         website: {type: String, default: ''},
     },
+    profiles: [
+        { label: {type: String}, url: {type: String} }
+    ],
     experience: [
         {
             company: {type: String},
@@ -306,6 +380,8 @@ export const uploadResumeDatabase = async (req,res) => {
             end_date: {type: String},
             description: {type: String},
             is_current: {type: Boolean},
+            link: {type: String, default: ''},
+            link_label: {type: String, default: ''},
         }
     ],
     project:[
@@ -313,6 +389,8 @@ export const uploadResumeDatabase = async (req,res) => {
             name: {type: String},
             type: {type: String},
             description: {type: String},
+            link: {type: String, default: ''},
+            link_label: {type: String, default: ''},
         }
     ],
     education: [
@@ -337,7 +415,13 @@ export const uploadResumeDatabase = async (req,res) => {
                 userPrompt,
                 responseMimeType: "application/json",
             });
-            parsedData = normalizeImportedData(JSON.parse(enhancedContent), fallbackData);
+
+            const extractedJson = parseStructuredJson(enhancedContent);
+            if (!extractedJson || typeof extractedJson !== "object") {
+                throw new Error("AI response did not contain valid JSON.");
+            }
+
+            parsedData = normalizeImportedData(extractedJson, fallbackData);
         } catch (aiError) {
             importMode = "fallback";
             parsedData = fallbackData;

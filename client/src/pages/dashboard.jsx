@@ -11,7 +11,48 @@ import { useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
 import { toast } from "react-hot-toast";
 import api from "../configs/api";
-import pdfToText from "react-pdftotext";
+import * as pdfjsLib from "pdfjs-dist/legacy/build/pdf.mjs";
+
+pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
+  "pdfjs-dist/legacy/build/pdf.worker.mjs",
+  import.meta.url
+).toString();
+
+const extractPdfText = async (file) => {
+  if (!file) return "";
+
+  const arrayBuffer = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+  const chunks = [];
+
+  for (let pageIndex = 1; pageIndex <= pdf.numPages; pageIndex += 1) {
+    const page = await pdf.getPage(pageIndex);
+    const textContent = await page.getTextContent();
+
+    // Reconstruct real lines using pdf.js's hasEOL flag - without this, an
+    // entire page collapses into one run-on line and section headers
+    // (SUMMARY, EDUCATION, ...) get buried mid-sentence instead of standing
+    // alone, which breaks section detection downstream.
+    const lines = [];
+    let currentLine = "";
+    for (const item of textContent.items) {
+      if (!("str" in item)) continue;
+      currentLine += currentLine && item.str ? ` ${item.str}` : item.str;
+      if (item.hasEOL) {
+        lines.push(currentLine.replace(/[ \t]+/g, " ").trim());
+        currentLine = "";
+      }
+    }
+    if (currentLine.trim()) {
+      lines.push(currentLine.replace(/[ \t]+/g, " ").trim());
+    }
+
+    const pageText = lines.filter(Boolean).join("\n");
+    if (pageText) chunks.push(pageText);
+  }
+
+  return chunks.join("\n\n").trim();
+};
 
 const splitIntoSections = (text) => {
   const lines = String(text || "")
@@ -33,24 +74,28 @@ const splitIntoSections = (text) => {
     const line = rawLine.trim();
     if (!line) continue;
     const normalized = line.toLowerCase().replace(/[:\-]/g, "").trim();
+    // Resume templates often render headers with visual letter-spacing
+    // ("S U M M A RY"), which PDF extraction reproduces literally. Also try
+    // the fully space-stripped form so those still get recognized.
+    const collapsed = normalized.replace(/\s+/g, "");
 
-    if (/^(professional summary|summary|profile|objective)$/.test(normalized)) {
+    if (/^(professional summary|summary|profile|objective)$/.test(normalized) || /^(professionalsummary|summary|profile|objective)$/.test(collapsed)) {
       active = "summary";
       continue;
     }
-    if (/^(work experience|experience|employment|professional experience)$/.test(normalized)) {
+    if (/^(work experience|experience|employment|professional experience)$/.test(normalized) || /^(workexperience|experience|employment|professionalexperience)$/.test(collapsed)) {
       active = "experience";
       continue;
     }
-    if (/^(education|academic background|academics)$/.test(normalized)) {
+    if (/^(education|academic background|academics)$/.test(normalized) || /^(education|academicbackground|academics)$/.test(collapsed)) {
       active = "education";
       continue;
     }
-    if (/^(skills|technical skills|core skills|technologies)$/.test(normalized)) {
+    if (/^(skills|technical skills|core skills|technologies)$/.test(normalized) || /^(skills|technicalskills|coreskills|technologies)$/.test(collapsed)) {
       active = "skills";
       continue;
     }
-    if (/^(projects|project experience|personal projects)$/.test(normalized)) {
+    if (/^(projects|project experience|personal projects)$/.test(normalized) || /^(projects|projectexperience|personalprojects)$/.test(collapsed)) {
       active = "projects";
       continue;
     }
@@ -283,9 +328,9 @@ const Dashboard = () => {
 
     try {
       setIsUploadingResume(true);
-      const resumeText = await pdfToText(resume);
+      const resumeText = await extractPdfText(resume);
       if (!resumeText || resumeText.trim().length < 30) {
-        toast.error("Could not read enough text from the PDF");
+        toast.error("Could not read enough text from the PDF. Try another PDF export or update the file.");
         return;
       }
 
@@ -418,7 +463,7 @@ const Dashboard = () => {
             <button key={index} onClick={() => navigate(`/app/builder/${resume._id}`)} className="relative w-full sm:max-w-36 h-48 flex flex-col items-center justify-center rounded-lg gap-2 border group hover:shadow-lg transition-all duration-300 cursor-pointer" style={{background: `linear-gradient(135deg, ${baseColor}10, ${baseColor}40)`, borderColor: baseColor + '40'}}>
 
                 <FilePenLineIcon className="size-7 group-hover:scale-105 transition-all" style={{ color: baseColor }}/>
-                <p className="text-sm group-hover:scale-105 transition-all px-2 text-center" style={{color: baseColor}}>{resume.title}</p>
+                <p className="text-sm group-hover:scale-105 transition-all px-2 text-center w-full wrap-break-word line-clamp-2" style={{color: baseColor}}>{resume.title}</p>
                 <p className="absolute bottom-1 text-[11px] text-slate-400 group-hover:text-slate-500 transition-all duration-300 px-2 text-center" style={{color: baseColor + '90'}}>Update on {new Date(resume.updatedAt).toLocaleDateString()}</p>
                 <div onClick={e => e.stopPropagation()} className="absolute top-1 right-1 group-hover:flex items-center hidden">
                   <Trash2Icon onClick={() => deleteResume(resume._id)} className="size-7 p-1.5 hover:bg-white/50 rounded text-slate-700 transition-colors"/>

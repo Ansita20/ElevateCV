@@ -84,6 +84,7 @@ const Preview = () => {
         data={resumeData}
         template={resumeData.template}
         accentColor={resumeData.accent_color}
+        spacing={resumeData.spacing}
         classes="shadow-sm"
       />
     </div>

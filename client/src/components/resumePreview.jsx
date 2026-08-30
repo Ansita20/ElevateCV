@@ -3,8 +3,10 @@ import ClassicTemplate from "../assets/templates/ClassicTemplate";
 import MinimalTemplate from "../assets/templates/MinimalTemplate";
 import MinimalImageTemplate from "../assets/templates/MinimalImageTemplate";
 import ModernTemplate from "../assets/templates/ModernTemplate";
+import LatexClassicTemplate from "../assets/templates/LatexClassicTemplate";
+import LatexModernTemplate from "../assets/templates/LatexModernTemplate";
 
-const ResumePreview = ({data, template, accentColor, classes = ""}) => {
+const ResumePreview = ({data, template, accentColor, spacing = "normal", classes = ""}) => {
   const livePersonalInfo = data?.personel_Info || {};
   const persistedPersonalInfo = data?.personal_info || {};
 
@@ -26,16 +28,22 @@ const ResumePreview = ({data, template, accentColor, classes = ""}) => {
   const renderTemplate = () => {
     switch(template){
       case "modern":
-        return <ModernTemplate data = {normalizedData} accentColor = {accentColor} />;
+        return <ModernTemplate data = {normalizedData} accentColor = {accentColor} spacing = {spacing} />;
 
       case "minimal":
-        return <MinimalTemplate data = {normalizedData} accentColor = {accentColor} />;  
+        return <MinimalTemplate data = {normalizedData} accentColor = {accentColor} spacing = {spacing} />;
 
       case "minimal-image":
-        return <MinimalImageTemplate data = {normalizedData} accentColor = {accentColor} />;
+        return <MinimalImageTemplate data = {normalizedData} accentColor = {accentColor} spacing = {spacing} />;
+
+      case "latex-classic":
+        return <LatexClassicTemplate data = {normalizedData} accentColor = {accentColor} spacing = {spacing} />;
+
+      case "latex-modern":
+        return <LatexModernTemplate data = {normalizedData} accentColor = {accentColor} spacing = {spacing} />;
 
       default:
-        return <ClassicTemplate data = {normalizedData} accentColor = {accentColor} />;  
+        return <ClassicTemplate data = {normalizedData} accentColor = {accentColor} spacing = {spacing} />;
     }
   }
 

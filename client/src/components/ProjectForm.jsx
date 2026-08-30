@@ -2,7 +2,7 @@ import { FolderKanban, Plus, X } from "lucide-react";
 
 const ProjectForm = ({ data, onChange }) => {
   const handleAdd = () => {
-    onChange([...data, { name: "", type: "", description: "" }]);
+    onChange([...data, { name: "", type: "", description: "", link: "", link_label: "" }]);
   };
 
   const handleRemove = (index) => {
@@ -79,6 +79,22 @@ const ProjectForm = ({ data, onChange }) => {
                 rows={4}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors text-sm resize-none"
               />
+              <div className="flex gap-2 mt-2">
+                <input
+                  type="text"
+                  value={project.link_label || ""}
+                  onChange={(e) => handleChange(index, "link_label", e.target.value)}
+                  placeholder="Link label (e.g., Live Demo, GitHub)"
+                  className="w-1/2 px-3 py-2 border border-gray-300 rounded-lg focus:ring focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors text-sm"
+                />
+                <input
+                  type="url"
+                  value={project.link || ""}
+                  onChange={(e) => handleChange(index, "link", e.target.value)}
+                  placeholder="https://... (optional)"
+                  className="w-1/2 px-3 py-2 border border-gray-300 rounded-lg focus:ring focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors text-sm"
+                />
+              </div>
             </div>
           ))}
         </div>
