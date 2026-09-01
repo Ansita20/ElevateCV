@@ -5,6 +5,7 @@ import connectDB from "./configs/db.js";
 import userRouter from "./routes/userRoutes.js";
 import resumeRouter from "./routes/resumeRoutes.js";
 import aiRouter from "./routes/aiRoutes.js";
+import cityfitRouter from "./routes/cityfitRoutes.js";
 
 const app = express();
 
@@ -18,5 +19,6 @@ app.get("/", (req, res) => res.send("Server is live..."));
 app.use("/api/users", userRouter);
 app.use("/api/resumes", resumeRouter);
 app.use("/api/ai", aiRouter);
+app.use("/api/cityfit", cityfitRouter);
 
 export default app;

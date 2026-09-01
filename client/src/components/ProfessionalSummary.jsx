@@ -40,6 +40,7 @@ const ProfessionalSummary = ({data, onChange, setResumeData}) => {
         "/api/ai/enhance-pro-sum",
         { userContent: data },
         {
+          timeout: 30000, // Gemini calls routinely exceed the 8s default
           headers: {
             Authorization: `Bearer ${token}`,
           },

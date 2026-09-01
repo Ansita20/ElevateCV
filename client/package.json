@@ -11,7 +11,8 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "start": "serve -s dist -l ${PORT:-3000}"
   },
   "dependencies": {
     "@reduxjs/toolkit": "^2.11.2",
@@ -27,6 +28,7 @@
     "react-redux": "^9.2.0",
     "react-router-dom": "^7.9.6",
     "react-scripts": "^5.0.1",
+    "serve": "^14.2.6",
     "tailwindcss": "^4.1.17"
   },
   "devDependencies": {

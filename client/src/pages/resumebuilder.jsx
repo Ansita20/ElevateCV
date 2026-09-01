@@ -3,7 +3,7 @@ import { useNavigate, useParams, Link } from "react-router-dom";
 import ProfessionalSummary from "../components/ProfessionalSummary";
 import PersonelInfoForm from "../components/PersonelInfo";
 import TemplateSelector from "../components/TemplateSelector";
-import ColorChange from "../components/colorChange";
+import ColorChange from "../components/ColorChange";
 import SpacingSelector from "../components/SpacingSelector";
 import ResumePreview from "../components/resumePreview";
 import { toast } from "react-hot-toast";
@@ -21,7 +21,9 @@ import {
   Eye,
   Globe,
   Share2,
-  Link2
+  Link2,
+  Target,
+  MapPin
 } from "lucide-react";
 import ExperienceForm from "../components/ExperienceForm";
 import EducationForm from "../components/EducationForm";
@@ -222,6 +224,14 @@ const Resumebuilder = () => {
     navigate(`/preview/${resumeId}`, { state: { resumeData } });
   };
 
+  const handleOpenAtsMatch = () => {
+    navigate(`/app/ats-match/${resumeId}`, { state: { resumeData } });
+  };
+
+  const handleOpenCityFit = () => {
+    navigate(`/app/city-fit/${resumeId}`, { state: { resumeData } });
+  };
+
   const handleDone = () => {
     navigate("/app");
   };
@@ -352,6 +362,22 @@ const Resumebuilder = () => {
               >
                 <Share2 className="size-4" />
                 Share
+              </button>
+              <button
+                type="button"
+                onClick={handleOpenAtsMatch}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-300 text-sm text-gray-700 bg-white hover:bg-gray-50 transition-colors"
+              >
+                <Target className="size-4" />
+                ATS Match
+              </button>
+              <button
+                type="button"
+                onClick={handleOpenCityFit}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-300 text-sm text-gray-700 bg-white hover:bg-gray-50 transition-colors"
+              >
+                <MapPin className="size-4" />
+                Where to Apply
               </button>
               <button
                 type="button"

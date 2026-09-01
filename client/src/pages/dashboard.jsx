@@ -339,7 +339,7 @@ const Dashboard = () => {
         const { data } = await api.post(
           "/api/ai/generate-resume",
           { title: finalTitle, resumeText },
-          authHeaders
+          { ...authHeaders, timeout: 45000 } // Gemini + JSON extraction routinely exceeds the 8s default
         );
 
         if (!data?.resumeId) {

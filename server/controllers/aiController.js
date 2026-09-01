@@ -334,6 +334,104 @@ export const enhanceJobDescription = async (req,res) => {
     }
 }
 
+const serializeResumeForAts = (resumeData = {}) => {
+    const lines = [];
+    const info = resumeData.personal_info || {};
+
+    if (info.profession) lines.push(`Target role/profession: ${info.profession}`);
+    if (resumeData.professional_summary) lines.push(`Summary: ${resumeData.professional_summary}`);
+    if (Array.isArray(resumeData.skills) && resumeData.skills.length) {
+        lines.push(`Skills: ${resumeData.skills.join(', ')}`);
+    }
+    if (Array.isArray(resumeData.experience)) {
+        for (const exp of resumeData.experience) {
+            const header = [exp?.position, exp?.company].filter(Boolean).join(' at ');
+            if (header || exp?.description) lines.push(`Experience - ${header}: ${exp?.description || ''}`);
+        }
+    }
+    if (Array.isArray(resumeData.project)) {
+        for (const proj of resumeData.project) {
+            if (proj?.name || proj?.description) lines.push(`Project - ${proj?.name || ''}: ${proj?.description || ''}`);
+        }
+    }
+    if (Array.isArray(resumeData.education)) {
+        for (const edu of resumeData.education) {
+            const header = [edu?.degree, edu?.field, edu?.institution].filter(Boolean).join(', ');
+            if (header) lines.push(`Education: ${header}`);
+        }
+    }
+
+    return lines.join('\n') || 'No resume content provided.';
+};
+
+// controller for scoring how well a resume matches a target job description,
+// ATS-style (keyword/skill overlap), plus concrete gaps to fix
+// POST: /api/ai/ats-match
+export const checkAtsMatch = async (req, res) => {
+    try {
+        const { resumeData, jobDescription } = req.body;
+
+        if (!jobDescription || !String(jobDescription).trim()) {
+            return res.status(400).json({ message: 'Missing required fields' });
+        }
+
+        const resumeText = serializeResumeForAts(resumeData);
+
+        const systemPrompt = `You are an ATS (Applicant Tracking System) resume matching expert. Compare the given resume against the given job description and evaluate how it would score in an automated ATS keyword/skill match, plus give concrete, actionable improvements.
+
+Respond with ONLY a JSON object in this exact shape, no extra text before or after:
+{
+  "matchScore": <integer 0-100>,
+  "matchedKeywords": ["..."],
+  "missingKeywords": ["..."],
+  "suggestions": ["...", "..."]
+}
+
+Rules:
+- matchScore reflects realistic ATS keyword/skill overlap, not vague enthusiasm - a resume missing most of the job's core required skills should score low even if well-written.
+- matchedKeywords: specific skills/tools/qualifications from the job description that the resume already demonstrates.
+- missingKeywords: specific skills/tools/qualifications the job description asks for that are absent or unclear in the resume. Use real, concrete terms taken from the job description - don't invent generic ones.
+- suggestions: 3-5 short, concrete, actionable bullet points (e.g. "Add 'Kubernetes' to your skills section since it's a required qualification" not "improve your skills section").`;
+
+        const userPrompt = `RESUME:\n${resumeText}\n\nJOB DESCRIPTION:\n${jobDescription}`;
+
+        const { text } = await generateTextWithGemini({
+            systemPrompt,
+            userPrompt,
+            responseMimeType: "application/json",
+        });
+
+        const parsed = parseStructuredJson(text);
+        if (!parsed || typeof parsed !== 'object') {
+            throw new Error('AI response did not contain valid JSON.');
+        }
+
+        const matchScore = Number.isFinite(parsed.matchScore)
+            ? Math.max(0, Math.min(100, Math.round(parsed.matchScore)))
+            : null;
+        if (matchScore === null) {
+            throw new Error('AI response did not include a valid matchScore.');
+        }
+
+        const matchedKeywords = Array.isArray(parsed.matchedKeywords)
+            ? parsed.matchedKeywords.filter((k) => typeof k === 'string').slice(0, 30)
+            : [];
+        const missingKeywords = Array.isArray(parsed.missingKeywords)
+            ? parsed.missingKeywords.filter((k) => typeof k === 'string').slice(0, 30)
+            : [];
+        const suggestions = Array.isArray(parsed.suggestions)
+            ? parsed.suggestions.filter((s) => typeof s === 'string').slice(0, 8)
+            : [];
+
+        return res.status(200).json({ matchScore, matchedKeywords, missingKeywords, suggestions });
+    } catch (error) {
+        const message = error?.status
+            ? `AI provider error (${error.status}): ${error.message}`
+            : error.message;
+        return res.status(400).json({ message });
+    }
+};
+
 // controller for uploading the resume's database
 // POST: /api/ai/upload-resume-db
 export const uploadResumeDatabase = async (req,res) => {

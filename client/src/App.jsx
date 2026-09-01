@@ -5,6 +5,8 @@ import Dashboard from './pages/dashboard.jsx'
 import Login from './pages/login.jsx'
 import Layout from './pages/layout.jsx'
 import Resumebuilder from './pages/resumebuilder.jsx'
+import AtsMatch from './pages/atsMatch.jsx'
+import CityFit from './pages/cityFit.jsx'
 import Preview from './pages/preview.jsx'
 import NotFound from './pages/notfound.jsx'
 import { useDispatch } from 'react-redux'
@@ -47,6 +49,8 @@ const App = () => {
         <Route path='/app' element={<Layout />}> 
           <Route index element={<Dashboard />}/>
           <Route path='builder/:resumeId' element={<Resumebuilder />}/>
+          <Route path='ats-match/:resumeId' element={<AtsMatch />}/>
+          <Route path='city-fit/:resumeId' element={<CityFit />}/>
         </Route>
       
       <Route path='/login' element={<Login />}/>
